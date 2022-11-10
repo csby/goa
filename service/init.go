@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/csby/goa/config"
+	"github.com/csby/gwsf/gcfg"
 	"github.com/csby/gwsf/glog"
 	"github.com/csby/gwsf/gserver"
 	"github.com/csby/gwsf/gtype"
@@ -13,13 +15,13 @@ import (
 
 const (
 	moduleType    = "server"
-	moduleName    = "gwsf-svc-example"
-	moduleRemark  = "WEB服务示例"
+	moduleName    = "goa"
+	moduleRemark  = "办公自动化系统"
 	moduleVersion = "1.0.1.0"
 )
 
 var (
-	cfg              = NewConfig()
+	cfg              = config.NewConfig()
 	log              = &glog.Writer{Level: glog.LevelAll}
 	svr gtype.Server = nil
 )
@@ -70,6 +72,12 @@ func init() {
 			fmt.Println("load configure file fail: ", err)
 		}
 	}
+	cfg.Path = cfgPath
+	cfg.Load = cfg.DoLoad
+	cfg.Save = cfg.DoSave
+	cfg.InitId()
+
+	//cfg.SaveToFile(cfgPath)
 
 	// init certificate
 	if cfg.Https.Enabled {
@@ -90,6 +98,74 @@ func init() {
 	if cfg.Site.Opt.Path == "" {
 		cfg.Site.Opt.Path = filepath.Join(rootFolder, "site", "opt")
 	}
+	oaSiteExisted := false
+	for i := 0; i < len(cfg.Site.Apps); i++ {
+		site := cfg.Site.Apps[i]
+		if site.Uri == config.StaffSiteUri {
+			oaSiteExisted = true
+			break
+		}
+	}
+	if !oaSiteExisted {
+		if cfg.Site.Apps == nil {
+			cfg.Site.Apps = make([]gcfg.SiteApp, 0)
+		}
+		cfg.Site.Apps = append(cfg.Site.Apps, gcfg.SiteApp{
+			Name: config.StaffSiteName,
+			Uri:  config.StaffSiteUri,
+		})
+	}
+
+	// init uri for dhcp filter api uri
+	if cfg.Dhcp.Api.Uri.Filter.List == "" {
+		cfg.Dhcp.Api.Uri.Filter.List = "/api/dhcp/filter/list"
+	}
+	if cfg.Dhcp.Api.Uri.Filter.Add == "" {
+		cfg.Dhcp.Api.Uri.Filter.Add = "/api/dhcp/filter/add"
+	}
+	if cfg.Dhcp.Api.Uri.Filter.Del == "" {
+		cfg.Dhcp.Api.Uri.Filter.Del = "/api/dhcp/filter/del"
+	}
+	if cfg.Dhcp.Api.Uri.Filter.Mod == "" {
+		cfg.Dhcp.Api.Uri.Filter.Mod = "/api/dhcp/filter/mod"
+	}
+	if cfg.Dhcp.Api.Uri.Lease.List == "" {
+		cfg.Dhcp.Api.Uri.Lease.List = "/api/dhcp/lease/list"
+	}
+
+	// init uri for svn api uri
+	if cfg.Svn.Api.Uri.Repository.Add == "" {
+		cfg.Svn.Api.Uri.Repository.Add = "/api/svn/repository/new"
+	}
+	if cfg.Svn.Api.Uri.Repository.List == "" {
+		cfg.Svn.Api.Uri.Repository.List = "/api/svn/repository/list"
+	}
+	if cfg.Svn.Api.Uri.Repository.Folder == "" {
+		cfg.Svn.Api.Uri.Repository.Folder = "/api/svn/folder/list"
+	}
+	if cfg.Svn.Api.Uri.Permission.List == "" {
+		cfg.Svn.Api.Uri.Permission.List = "/api/svn/permission/list"
+	}
+	if cfg.Svn.Api.Uri.Permission.Add == "" {
+		cfg.Svn.Api.Uri.Permission.Add = "/api/svn/permission/add"
+	}
+	if cfg.Svn.Api.Uri.Permission.Mod == "" {
+		cfg.Svn.Api.Uri.Permission.Mod = "/api/svn/permission/mod"
+	}
+	if cfg.Svn.Api.Uri.Permission.Del == "" {
+		cfg.Svn.Api.Uri.Permission.Del = "/api/svn/permission/del"
+	}
+	if cfg.Svn.Api.Uri.User.Permission == "" {
+		cfg.Svn.Api.Uri.User.Permission = "/api/svn/user/permission/list"
+	}
+
+	// init path of system service
+	if cfg.Sys.Svc.Custom.App == "" {
+		cfg.Sys.Svc.Custom.App = filepath.Join(rootFolder, "svc", "custom")
+	}
+	if cfg.Sys.Svc.Custom.Log == "" {
+		cfg.Sys.Svc.Custom.Log = filepath.Join(rootFolder, "log", "svc", "custom")
+	}
 
 	// init service
 	if strings.TrimSpace(cfg.Svc.Name) == "" {
@@ -98,7 +174,7 @@ func init() {
 	cfg.Svc.Args = svcArgument
 	svcName := cfg.Svc.Name
 	log.Init(cfg.Log.Level, svcName, cfg.Log.Folder)
-	hdl := NewHandler(log)
+	hdl := NewHandler(log, cfg)
 	svr, err = gserver.NewServer(log, &cfg.Config, hdl)
 	if err != nil {
 		fmt.Println("init service fail: ", err)

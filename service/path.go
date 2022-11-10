@@ -3,6 +3,6 @@ package main
 import "github.com/csby/gwsf/gtype"
 
 var (
-	webPath = &gtype.Path{Prefix: "/app"}
-	apiPath = &gtype.Path{Prefix: "/app.api"}
+	apiPath  = &gtype.Path{Prefix: "/staff.api"}
+	authPath = &gtype.Path{Prefix: "/auth"}
 )
